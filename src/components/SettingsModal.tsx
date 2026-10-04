@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserProfile } from './AuthModal';
 import { Settings, LogOut, Bell, X, Check } from 'lucide-react';
+import { saveUserToFirestore } from '../firebase';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -22,15 +23,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [currency, setCurrency] = useState('₹');
   const [savedSuccess, setSavedSuccess] = useState(false);
 
+  useEffect(() => {
+    if (currentUser?.name) {
+      setName(currentUser.name);
+    }
+  }, [currentUser]);
+
   if (!isOpen) return null;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentUser) {
-      onUpdateUser({
+    if (currentUser && name.trim()) {
+      const updatedProfile: UserProfile = {
         ...currentUser,
-        name,
+        name: name.trim(),
+      };
+
+      // Update parent component state and local storage
+      onUpdateUser(updatedProfile);
+
+      // Persist updated Display Name to Cloud Firestore DB
+      await saveUserToFirestore({
+        email: currentUser.email,
+        name: name.trim(),
       });
+
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 2000);
     }
