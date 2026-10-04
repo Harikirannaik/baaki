@@ -5,13 +5,18 @@ import { ProjectDetailView } from './components/ProjectDetailView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { SettingsModal } from './components/SettingsModal';
 import { subscribeProjects, saveProjectToFirestore, deleteProjectFromFirestore } from './firebase';
-import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, User, Settings, LogIn, UserPlus } from 'lucide-react';
+import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, User, Settings, LogIn, UserPlus, Sun, Moon } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [projects, setProjects] = useState<SpendProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  // Theme state ('dark' | 'light')
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('baaki_theme') as 'dark' | 'light') || 'dark';
+  });
 
   // Auth & Settings state
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
@@ -21,6 +26,16 @@ export const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('register');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Synchronize document theme attribute
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('baaki_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     // Clear legacy mock data from local storage if any exists
@@ -98,7 +113,30 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* Theme Toggle Button */}
+            <button
+              className="btn"
+              onClick={toggleTheme}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid var(--border-light)',
+                padding: '9px 12px',
+                borderRadius: 'var(--radius-md)',
+                color: theme === 'dark' ? '#f59e0b' : '#6366f1',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+              }}
+              title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'inline-block' }}>
+                {theme === 'dark' ? 'Light' : 'Dark'}
+              </span>
+            </button>
+
             <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
               <Plus size={18} /> New Spending Project
             </button>
