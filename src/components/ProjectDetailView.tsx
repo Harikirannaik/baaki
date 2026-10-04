@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { SpendProject } from '../types';
 import { calculateBalances, simplifyDebts, CATEGORY_ICONS } from '../utils';
 import { AddExpenseModal } from './AddExpenseModal';
-import { 
-  ArrowLeft, Plus, Users, Receipt, Scale, UserPlus, 
+import {
+  ArrowLeft, Plus, Users, Receipt, Scale, UserPlus,
   CheckCircle2, Trash2, Wallet, Sparkles, UserCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -124,7 +124,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   return (
     <div style={{ animation: 'fadeIn 0.3s ease-out' }}>
       {/* Top Banner */}
-      <div 
+      <div
         style={{
           background: project.coverGradient,
           borderRadius: 'var(--radius-lg)',
@@ -136,17 +136,17 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <button 
-            className="btn btn-secondary" 
+          <button
+            className="btn btn-secondary"
             onClick={onBack}
             style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', borderColor: 'rgba(255,255,255,0.2)' }}
           >
-            <ArrowLeft size={16} /> Back to Projects
+            <ArrowLeft size={16} /> Back to Khataa lu
           </button>
 
           {onDeleteProject && (
-            <button 
-              className="btn btn-secondary" 
+            <button
+              className="btn btn-secondary"
               onClick={() => onDeleteProject(project.id)}
               style={{ background: 'rgba(239,68,68,0.25)', color: '#fca5a5', backdropFilter: 'blur(8px)', borderColor: 'rgba(239,68,68,0.4)' }}
             >
@@ -167,16 +167,16 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
             )}
             <div style={{ display: 'flex', gap: '16px', marginTop: '16px', flexWrap: 'wrap' }}>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem', color: 'white', backdropFilter: 'blur(4px)' }}>
-                👥 {project.members.length} Members
+                👥 {project.members.length} Khaatadaarulu
               </div>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem', color: 'white', backdropFilter: 'blur(4px)' }}>
-                🧾 {project.expenses.length} Expenditures
+                🧾 {project.expenses.length} Lekkalu
               </div>
             </div>
           </div>
 
           <div style={{ background: 'rgba(0,0,0,0.4)', padding: '16px 24px', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)', textAlign: 'right' }}>
-            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', fontWeight: 700 }}>Total Spent</span>
+            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', fontWeight: 700 }}>Final Idi</span>
             <div style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', fontFamily: 'var(--font-heading)' }}>
               {project.currency} {totalSpent.toLocaleString()}
             </div>
@@ -188,9 +188,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '8px', background: 'rgba(30, 41, 59, 0.6)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
           {[
-            { id: 'expenses', label: 'Expenditures', icon: Receipt },
-            { id: 'balances', label: 'Balances & Settle', icon: Scale },
-            { id: 'members', label: 'Members', icon: Users },
+            { id: 'expenses', label: 'Lekka patram', icon: Receipt },
+            { id: 'balances', label: 'Vaata lu', icon: Scale },
+            { id: 'members', label: 'Khaatadaarulu', icon: Users },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -220,9 +220,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           })}
         </div>
 
-        <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
+        {/* <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
           <Plus size={18} /> Add Expenditure
-        </button>
+        </button> */}
       </div>
 
       {/* TAB 1: EXPENDITURES LIST */}
@@ -233,10 +233,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               <div style={{ width: '64px', height: '64px', background: 'var(--primary-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--primary)' }}>
                 <Receipt size={32} />
               </div>
-              <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>No Expenditures Yet</h3>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Start tracking by adding your first group expenditure.</p>
+              <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Manam Reach</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Andari vaata lu ikada raskovochu.</p>
               <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
-                <Plus size={18} /> Add First Expenditure
+                <Plus size={18} /> Ikada Rayu lekkalu anni
               </button>
             </div>
           ) : (
@@ -273,7 +273,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                         </div>
                       </div>
 
-                      <button 
+                      <button
                         onClick={() => handleDeleteExpense(exp.id)}
                         style={{ background: 'transparent', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
                         title="Delete expense"
@@ -341,7 +341,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <div className="card-glass" style={{ padding: '24px' }}>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Sparkles size={20} color="var(--accent-amber)" />
-              Smart Debt Simplification
+              Final Balancing
             </h3>
 
             {simplifiedDebts.length === 0 ? (
@@ -364,7 +364,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                       <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'white' }}>
                         {project.currency}{debt.amount}
                       </span>
-                      <button 
+                      <button
                         className="btn btn-sm btn-secondary"
                         onClick={() => handleRecordSettlement(debt.from, debt.to, debt.amount)}
                       >
@@ -429,8 +429,8 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               )}
 
               <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '10px' }}>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="form-control"
                   placeholder="Or enter custom member name..."
                   value={newMemberName}
@@ -445,10 +445,10 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
             {project.members.map(m => (
               <div key={m.id} style={{ padding: '16px', background: 'rgba(15, 23, 42, 0.5)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <img 
-                  src={m.avatar} 
-                  alt={m.name} 
-                  style={{ width: '44px', height: '44px', borderRadius: '50%', background: m.color || 'var(--primary)' }} 
+                <img
+                  src={m.avatar}
+                  alt={m.name}
+                  style={{ width: '44px', height: '44px', borderRadius: '50%', background: m.color || 'var(--primary)' }}
                 />
                 <div>
                   <h4 style={{ fontSize: '0.98rem', fontWeight: 700 }}>{m.name}</h4>

@@ -144,7 +144,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               onClick={onLogout}
               style={{ background: 'rgba(244, 63, 94, 0.15)', color: '#f43f5e', border: '1px solid rgba(244, 63, 94, 0.3)', gap: '6px' }}
             >
-              <LogOut size={16} /> Log Out
+              <LogOut size={16} /> Ryt
             </button>
           </div>
         </form>

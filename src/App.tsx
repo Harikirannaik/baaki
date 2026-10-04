@@ -224,12 +224,12 @@ export const App: React.FC = () => {
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'inline-block' }}>
-                {theme === 'dark' ? 'Light' : 'Dark'}
+                {theme === 'dark' ? 'Velturu' : 'Chikati'}
               </span>
             </button>
 
             <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>
-              <Plus size={18} /> New Spending Project
+              <Plus size={18} /> New Khata
             </button>
 
             {currentUser ? (
@@ -323,7 +323,7 @@ export const App: React.FC = () => {
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
                 <button className="btn btn-primary" style={{ padding: '14px 28px', fontSize: '1rem' }} onClick={() => setIsCreateModalOpen(true)}>
-                  <Plus size={20} /> Create New Spend
+                  <Plus size={20} /> Create New Baaki
                 </button>
               </div>
             </div>
@@ -370,7 +370,7 @@ export const App: React.FC = () => {
             {/* Projects Grid Section */}
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700 }}>
-                Your Spending Projects
+                Your Baaki Khata
               </h2>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 Select a project to add or view expenditures
