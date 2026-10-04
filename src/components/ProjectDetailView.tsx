@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SpendProject } from '../types';
 import { calculateBalances, simplifyDebts, CATEGORY_ICONS } from '../utils';
 import { AddExpenseModal } from './AddExpenseModal';
 import { 
   ArrowLeft, Plus, Users, Receipt, Scale, UserPlus, 
-  CheckCircle2, Trash2, Wallet, Sparkles
+  CheckCircle2, Trash2, Wallet, Sparkles, UserCheck
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { subscribeUsersFromFirestore } from '../firebase';
 
 interface ProjectDetailViewProps {
   project: SpendProject;
@@ -25,8 +26,40 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [newMemberName, setNewMemberName] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
+  const [registeredUsersMap, setRegisteredUsersMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const unsubscribe = subscribeUsersFromFirestore((fetchedUsers) => {
+      setRegisteredUsersMap(fetchedUsers);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const balances = calculateBalances(project);
+  const simplifiedDebts = simplifyDebts(balances);
+
+  const totalSpent = project.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+  const existingUsersList = Object.values(registeredUsersMap);
+
+  const handleAddRegisteredMember = (user: any) => {
+    const isAlreadyMember = project.members.some(m => m.email?.toLowerCase() === user.email.toLowerCase() || m.name.toLowerCase() === user.name.toLowerCase());
+    if (isAlreadyMember) return;
+
+    const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
+    const newPerson = {
+      id: `m-${Date.now()}`,
+      name: user.name,
+      email: user.email.toLowerCase().trim(),
+      avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}`,
+      color: colors[project.members.length % colors.length]
+    };
+
+    onUpdateProject({
+      ...project,
+      members: [...project.members, newPerson]
+    });
+  };
   const simplifiedDebts = simplifyDebts(balances);
 
   const totalSpent = project.expenses.reduce((sum, exp) => sum + exp.amount, 0);
@@ -360,18 +393,56 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           </div>
 
           {isAddingMember && (
-            <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '10px', marginBottom: '20px', background: 'rgba(15,23,42,0.6)', padding: '12px', borderRadius: 'var(--radius-md)' }}>
-              <input 
-                type="text" 
-                className="form-control"
-                placeholder="Enter member name..."
-                value={newMemberName}
-                onChange={e => setNewMemberName(e.target.value)}
-                autoFocus
-              />
-              <button type="submit" className="btn btn-emerald">Add</button>
-              <button type="button" className="btn btn-secondary" onClick={() => setIsAddingMember(false)}>Cancel</button>
-            </form>
+            <div style={{ marginBottom: '20px', background: 'rgba(15,23,42,0.6)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+              {existingUsersList.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    Quick Add Registered Users from Database:
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {existingUsersList.map((user: any) => {
+                      const isAlreadyMember = project.members.some(m => m.email?.toLowerCase() === user.email.toLowerCase() || m.name.toLowerCase() === user.name.toLowerCase());
+                      return (
+                        <button
+                          type="button"
+                          key={user.email}
+                          onClick={() => handleAddRegisteredMember(user)}
+                          disabled={isAlreadyMember}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            background: isAlreadyMember ? 'rgba(255,255,255,0.05)' : 'var(--primary-light)',
+                            border: isAlreadyMember ? '1px solid var(--border-light)' : '1px solid var(--primary)',
+                            color: isAlreadyMember ? 'var(--text-subtle)' : 'white',
+                            cursor: isAlreadyMember ? 'default' : 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          <img src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}`} alt={user.name} style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+                          <span>{user.name}</span>
+                          {isAlreadyMember ? <UserCheck size={14} /> : <Plus size={14} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                  type="text" 
+                  className="form-control"
+                  placeholder="Or enter custom member name..."
+                  value={newMemberName}
+                  onChange={e => setNewMemberName(e.target.value)}
+                />
+                <button type="submit" className="btn btn-emerald">Add</button>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsAddingMember(false)}>Done</button>
+              </form>
+            </div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
