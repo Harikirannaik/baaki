@@ -1,60 +1,110 @@
-import React, { useState } from 'react';
-import { SpendProject } from '../types';
+import React, { useState, useEffect } from 'react';
+import { SpendProject, Person } from '../types';
 import { PROJECT_GRADIENTS } from '../utils';
-import { Plus, X, Sparkles, UserPlus } from 'lucide-react';
+import { Plus, X, Sparkles, UserPlus, Check, UserCheck } from 'lucide-react';
+import { subscribeUsersFromFirestore } from '../firebase';
 
 interface CreateSpendModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreate: (newProject: SpendProject) => void;
+  currentUserEmail?: string;
+  currentUserName?: string;
 }
 
-export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({ isOpen, onClose, onCreate }) => {
+export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onCreate,
+  currentUserEmail,
+  currentUserName,
+}) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<'trip' | 'home' | 'event' | 'couple' | 'other'>('trip');
   const [selectedGradient, setSelectedGradient] = useState(PROJECT_GRADIENTS[0]);
   const [currency, setCurrency] = useState('₹');
 
-  // Initial members input list
-  const [memberNames, setMemberNames] = useState<string[]>([]);
+  // Members list (support full Person objects with email/avatar)
+  const [selectedMembers, setSelectedMembers] = useState<Person[]>([]);
   const [newMemberName, setNewMemberName] = useState('');
+  const [registeredUsersMap, setRegisteredUsersMap] = useState<Record<string, any>>({});
 
+  // Auto-fetch existing users from Firestore DB
+  useEffect(() => {
+    const unsubscribe = subscribeUsersFromFirestore((fetchedUsers) => {
+      setRegisteredUsersMap(fetchedUsers);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Initialize currentUser as default member when modal opens
+  useEffect(() => {
+    if (isOpen && currentUserName && selectedMembers.length === 0) {
+      const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
+      setSelectedMembers([{
+        id: `m-owner-${Date.now()}`,
+        name: currentUserName,
+        email: currentUserEmail?.toLowerCase().trim(),
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(currentUserName)}`,
+        color: colors[0]
+      }]);
+    }
+  }, [isOpen, currentUserName, currentUserEmail]);
 
   if (!isOpen) return null;
 
-  const handleAddMember = () => {
+  const existingUsersList = Object.values(registeredUsersMap);
+
+  const toggleRegisteredUser = (user: any) => {
+    const isSelected = selectedMembers.some(m => m.email?.toLowerCase() === user.email.toLowerCase());
+    const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
+
+    if (isSelected) {
+      setSelectedMembers(selectedMembers.filter(m => m.email?.toLowerCase() !== user.email.toLowerCase()));
+    } else {
+      setSelectedMembers([...selectedMembers, {
+        id: `m-${Date.now()}-${selectedMembers.length}`,
+        name: user.name,
+        email: user.email.toLowerCase().trim(),
+        avatar: user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}`,
+        color: colors[selectedMembers.length % colors.length]
+      }]);
+    }
+  };
+
+  const handleAddCustomMember = () => {
     if (newMemberName.trim()) {
-      setMemberNames([...memberNames, newMemberName.trim()]);
+      const name = newMemberName.trim();
+      const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
+      setSelectedMembers([...selectedMembers, {
+        id: `m-${Date.now()}-${selectedMembers.length}`,
+        name,
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+        color: colors[selectedMembers.length % colors.length]
+      }]);
       setNewMemberName('');
     }
   };
 
-  const handleRemoveMember = (index: number) => {
-    if (memberNames.length <= 1) return; // Keep at least 1 member
-    setMemberNames(memberNames.filter((_, i) => i !== index));
+  const handleRemoveMember = (id: string) => {
+    setSelectedMembers(selectedMembers.filter(m => m.id !== id));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || memberNames.length === 0) return;
-
-    const colors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#06b6d4', '#8b5cf6'];
+    if (!title.trim() || selectedMembers.length === 0) return;
 
     const newProject: SpendProject = {
       id: `proj-${Date.now()}`,
+      ownerId: currentUserEmail?.toLowerCase().trim(),
       title: title.trim(),
       description: description.trim(),
       category,
       coverGradient: selectedGradient,
       currency,
       createdAt: new Date().toISOString(),
-      members: memberNames.map((name, idx) => ({
-        id: `m-${Date.now()}-${idx}`,
-        name,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
-        color: colors[idx % colors.length]
-      })),
+      members: selectedMembers,
       expenses: [],
       settlements: []
     };
@@ -152,45 +202,94 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({ isOpen, onCl
           </div>
 
           <div className="form-group">
-            <label className="form-label">People Involved (Members)</label>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Select Registered Users (DB)</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>{existingUsersList.length} users registered</span>
+            </label>
+            
+            {existingUsersList.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', maxHeight: '120px', overflowY: 'auto', padding: '6px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                {existingUsersList.map((user: any) => {
+                  const isSelected = selectedMembers.some(m => m.email?.toLowerCase() === user.email.toLowerCase());
+                  return (
+                    <div
+                      key={user.email}
+                      onClick={() => toggleRegisteredUser(user)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 12px',
+                        borderRadius: '20px',
+                        background: isSelected ? 'var(--primary-light)' : 'rgba(255, 255, 255, 0.05)',
+                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border-light)',
+                        color: isSelected ? 'white' : 'var(--text-muted)',
+                        cursor: 'pointer',
+                        fontSize: '0.85rem',
+                        fontWeight: isSelected ? 600 : 400,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <img
+                        src={user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.name)}`}
+                        alt={user.name}
+                        style={{ width: '22px', height: '22px', borderRadius: '50%' }}
+                      />
+                      <span>{user.name}</span>
+                      {isSelected ? <UserCheck size={14} color="var(--primary)" /> : <Plus size={14} />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <label className="form-label">Or Add Custom Member</label>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
               <input 
                 type="text"
                 className="form-control"
-                placeholder="Add member name..."
+                placeholder="Enter custom member name..."
                 value={newMemberName}
                 onChange={e => setNewMemberName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddMember(); } }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomMember(); } }}
               />
               <button 
                 type="button" 
                 className="btn btn-secondary"
-                onClick={handleAddMember}
+                onClick={handleAddCustomMember}
               >
                 <UserPlus size={18} /> Add
               </button>
             </div>
 
+            <label className="form-label">Selected Project Members ({selectedMembers.length})</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-              {memberNames.map((name, idx) => (
+              {selectedMembers.map((m) => (
                 <div 
-                  key={idx}
+                  key={m.id}
                   style={{
-                    background: 'rgba(255,255,255,0.08)',
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
                     padding: '6px 12px',
                     borderRadius: '20px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    fontSize: '0.88rem'
+                    fontSize: '0.88rem',
+                    color: 'white'
                   }}
                 >
-                  <span>👤 {name}</span>
-                  {memberNames.length > 1 && (
+                  <img
+                    src={m.avatar}
+                    alt={m.name}
+                    style={{ width: '20px', height: '20px', borderRadius: '50%' }}
+                  />
+                  <span>{m.name}</span>
+                  {selectedMembers.length > 1 && (
                     <button 
                       type="button" 
-                      onClick={() => handleRemoveMember(idx)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}
+                      onClick={() => handleRemoveMember(m.id)}
+                      style={{ background: 'none', border: 'none', color: '#fda4af', cursor: 'pointer', display: 'flex' }}
                     >
                       <X size={14} />
                     </button>

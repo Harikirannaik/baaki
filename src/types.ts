@@ -38,6 +38,7 @@ export interface Settlement {
 
 export interface SpendProject {
   id: string;
+  ownerId?: string; // User email / User ID of creator
   title: string;
   description: string;
   category: 'trip' | 'home' | 'event' | 'couple' | 'other';

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, LogIn, UserPlus, Lock, Mail, AlertCircle, X } from 'lucide-react';
+import { saveUserToFirestore, subscribeUsersFromFirestore } from '../firebase';
 
 export interface UserProfile {
   name: string;
@@ -25,10 +26,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [firestoreUsers, setFirestoreUsers] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    const unsubscribe = subscribeUsersFromFirestore((fetchedUsers) => {
+      setFirestoreUsers(fetchedUsers);
+    });
+    return () => unsubscribe();
+  }, []);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -42,9 +51,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       return;
     }
 
+    // Combine local storage cache and Firestore accounts
     const savedUsersStr = localStorage.getItem('baaki_registered_users');
-    const registeredUsers: Record<string, { name: string; email: string; avatar: string; passwordHash: string }> = 
-      savedUsersStr ? JSON.parse(savedUsersStr) : {};
+    const localUsers: Record<string, any> = savedUsersStr ? JSON.parse(savedUsersStr) : {};
+    const registeredUsers = { ...localUsers, ...firestoreUsers };
 
     const normalizedEmail = email.toLowerCase().trim();
 
@@ -59,11 +69,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         name,
         email: normalizedEmail,
         avatar,
-        passwordHash: password, // Simple mockup store
+        passwordHash: password,
       };
 
-      registeredUsers[normalizedEmail] = newUser;
-      localStorage.setItem('baaki_registered_users', JSON.stringify(registeredUsers));
+      // Save to local cache
+      localUsers[normalizedEmail] = newUser;
+      localStorage.setItem('baaki_registered_users', JSON.stringify(localUsers));
+
+      // Save to Firestore real-time database
+      await saveUserToFirestore(newUser);
 
       const userProfile: UserProfile = { name: newUser.name, email: newUser.email, avatar: newUser.avatar };
       onAuthSuccess(userProfile);

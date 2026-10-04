@@ -4,6 +4,7 @@ import { CreateSpendModal } from './components/CreateSpendModal';
 import { ProjectDetailView } from './components/ProjectDetailView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { SettingsModal } from './components/SettingsModal';
+import { LandingPage } from './components/LandingPage';
 import { subscribeProjects, saveProjectToFirestore, deleteProjectFromFirestore } from './firebase';
 import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, Settings, LogIn, UserPlus, Sun, Moon } from 'lucide-react';
 
@@ -64,7 +65,21 @@ export const App: React.FC = () => {
     localStorage.setItem('baaki_current_user', JSON.stringify(updatedUser));
   };
 
-  const activeProject = projects.find(p => p.id === activeProjectId);
+  const userEmail = currentUser?.email.toLowerCase().trim();
+
+  // Filter projects belonging to or tagged to the logged in user
+  const userProjects = projects.filter(p => {
+    if (!userEmail) return false;
+    // Check if user is creator (ownerId)
+    if (p.ownerId && p.ownerId.toLowerCase().trim() === userEmail) return true;
+    // Check if user is a member of the project
+    if (p.members && p.members.some(m => m.email && m.email.toLowerCase().trim() === userEmail)) return true;
+    // Backward compatibility for legacy projects without ownerId
+    if (!p.ownerId) return true;
+    return false;
+  });
+
+  const activeProject = userProjects.find(p => p.id === activeProjectId);
 
   const handleCreateProject = async (newProject: SpendProject) => {
     setProjects([newProject, ...projects]);
@@ -88,11 +103,88 @@ export const App: React.FC = () => {
     }
   };
 
-  const totalGlobalSpent = projects.reduce((acc, p) => {
+  const totalGlobalSpent = userProjects.reduce((acc, p) => {
     return acc + p.expenses.reduce((s, e) => s + e.amount, 0);
   }, 0);
 
-  const totalGlobalExpensesCount = projects.reduce((acc, p) => acc + p.expenses.length, 0);
+  const totalGlobalExpensesCount = userProjects.reduce((acc, p) => acc + p.expenses.length, 0);
+
+  // If user is not logged in, render the futuristic Landing Page first
+  if (!currentUser) {
+    return (
+      <div>
+        {/* Top Navbar */}
+        <header className="app-header">
+          <div className="header-inner">
+            <div className="brand-logo" onClick={() => setActiveProjectId(null)} style={{ cursor: 'pointer' }}>
+              <div className="brand-icon-box">
+                <Wallet size={24} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="brand-title">Baaki</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Theme Toggle Button */}
+              <button
+                className="btn"
+                onClick={toggleTheme}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid var(--border-light)',
+                  padding: '9px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  color: theme === 'dark' ? '#f59e0b' : '#6366f1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                }}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'inline-block' }}>
+                  {theme === 'dark' ? 'Light' : 'Dark'}
+                </span>
+              </button>
+
+              <button
+                className="btn"
+                onClick={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border-light)', gap: '6px' }}
+              >
+                <LogIn size={16} /> Log In
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
+                style={{ gap: '6px' }}
+              >
+                <UserPlus size={16} /> Register
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Futuristic Landing Page */}
+        <LandingPage
+          onOpenRegister={() => { setAuthMode('register'); setIsAuthModalOpen(true); }}
+          onOpenLogin={() => { setAuthMode('login'); setIsAuthModalOpen(true); }}
+        />
+
+        {/* Authentication Modal */}
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onAuthSuccess={handleAuthSuccess}
+          initialMode={authMode}
+        />
+      </div>
+    );
+  }
 
 
   return (
@@ -256,7 +348,7 @@ export const App: React.FC = () => {
                 <div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Active Spend Projects</div>
                   <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', fontFamily: 'var(--font-heading)' }}>
-                    {projects.length} Projects
+                    {userProjects.length} Projects
                   </div>
                 </div>
               </div>
@@ -284,14 +376,14 @@ export const App: React.FC = () => {
               </span>
             </div>
 
-            {projects.length === 0 ? (
+            {userProjects.length === 0 ? (
               <div className="card-glass" style={{ padding: '60px 24px', textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--primary-light)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: '16px' }}>
                   <FolderPlus size={32} />
                 </div>
                 <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '8px', color: 'white' }}>No Projects Created Yet</h3>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.98rem' }}>
-                  All mock data has been removed. Create your first project to start tracking expenses with real Firestore storage!
+                  Create your first project to start tracking expenses tagged to your account!
                 </p>
                 <button className="btn btn-primary" style={{ padding: '12px 24px' }} onClick={() => setIsCreateModalOpen(true)}>
                   <Plus size={18} /> Create Your First Project
@@ -299,7 +391,7 @@ export const App: React.FC = () => {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
-                {projects.map(proj => {
+                {userProjects.map(proj => {
                   const projectTotal = proj.expenses.reduce((sum, e) => sum + e.amount, 0);
 
                   return (
@@ -393,6 +485,8 @@ export const App: React.FC = () => {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateProject}
+        currentUserEmail={currentUser?.email}
+        currentUserName={currentUser?.name}
       />
 
       {/* Register & Login Authentication Modal */}

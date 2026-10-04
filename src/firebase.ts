@@ -65,6 +65,39 @@ export const deleteProjectFromFirestore = async (projectId: string) => {
   }
 };
 
+/**
+ * Save user profile & credentials to Firestore users collection
+ */
+export const saveUserToFirestore = async (userData: { name: string; email: string; avatar: string; passwordHash: string }) => {
+  try {
+    await setDoc(doc(db, 'users', userData.email.toLowerCase().trim()), {
+      ...userData,
+      createdAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error("Error saving user to Firestore:", err);
+  }
+};
+
+/**
+ * Subscribe or fetch users from Firestore
+ */
+export const subscribeUsersFromFirestore = (onUpdate: (usersMap: Record<string, any>) => void) => {
+  return onSnapshot(
+    collection(db, 'users'),
+    (snapshot) => {
+      const usersMap: Record<string, any> = {};
+      snapshot.forEach((docSnap) => {
+        usersMap[docSnap.id] = docSnap.data();
+      });
+      onUpdate(usersMap);
+    },
+    (error) => {
+      console.warn("Firestore users subscription warning:", error);
+    }
+  );
+};
+
 
 
 // Import the functions you need from the SDKs you need
