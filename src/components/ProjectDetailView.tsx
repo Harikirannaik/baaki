@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { SpendProject } from '../types';
+import { SpendProject, Expense } from '../types';
 import { calculateBalances, simplifyDebts, CATEGORY_ICONS } from '../utils';
 import { AddExpenseModal } from './AddExpenseModal';
 import {
   ArrowLeft, Plus, Users, Receipt, Scale, UserPlus,
-  CheckCircle2, Trash2, Wallet, Sparkles, UserCheck
+  CheckCircle2, Trash2, Wallet, Sparkles, UserCheck, Edit2
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { subscribeUsersFromFirestore } from '../firebase';
@@ -24,6 +24,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'expenses' | 'balances' | 'members'>('expenses');
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [newMemberName, setNewMemberName] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [registeredUsersMap, setRegisteredUsersMap] = useState<Record<string, any>>({});
@@ -61,21 +62,46 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
     });
   };
 
-  const handleAddExpense = (newExp: any) => {
+  const handleAddOrUpdateExpense = (expObj: Expense) => {
+    const existingIndex = project.expenses.findIndex(e => e.id === expObj.id);
+    let updatedExpenses: Expense[];
+
+    if (existingIndex >= 0) {
+      // Update existing expense
+      updatedExpenses = [...project.expenses];
+      updatedExpenses[existingIndex] = expObj;
+    } else {
+      // Add new expense
+      updatedExpenses = [expObj, ...project.expenses];
+    }
+
     const updated: SpendProject = {
       ...project,
-      expenses: [newExp, ...project.expenses]
+      expenses: updatedExpenses
     };
     onUpdateProject(updated);
     confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
   };
 
+  const handleOpenEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setIsAddExpenseOpen(true);
+  };
+
   const handleDeleteExpense = (expId: string) => {
-    const updated: SpendProject = {
-      ...project,
-      expenses: project.expenses.filter(e => e.id !== expId)
-    };
-    onUpdateProject(updated);
+    if (confirm('Are you sure you want to delete this expenditure?')) {
+      const updated: SpendProject = {
+        ...project,
+        expenses: project.expenses.filter(e => e.id !== expId)
+      };
+      onUpdateProject(updated);
+    }
+  };
+
+  const handleConfirmDeleteProject = () => {
+    if (onDeleteProject && confirm(`Are you sure you want to delete "${project.title}"? This action cannot be undone.`)) {
+      onDeleteProject(project.id);
+    }
   };
 
   const handleAddMember = (e: React.FormEvent) => {
@@ -100,6 +126,12 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   };
 
   const handleRecordSettlement = (fromId: string, toId: string, amount: number) => {
+    const fromName = getMemberName(fromId);
+    const toName = getMemberName(toId);
+    if (!confirm(`Confirm settlement: Has ${fromName} paid ${project.currency}${amount} to ${toName}?`)) {
+      return;
+    }
+
     const newSettlement = {
       id: `settle-${Date.now()}`,
       fromPersonId: fromId,
@@ -147,7 +179,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           {onDeleteProject && (
             <button
               className="btn btn-secondary"
-              onClick={() => onDeleteProject(project.id)}
+              onClick={handleConfirmDeleteProject}
               style={{ background: 'rgba(239,68,68,0.25)', color: '#fca5a5', backdropFilter: 'blur(8px)', borderColor: 'rgba(239,68,68,0.4)' }}
             >
               <Trash2 size={16} /> Delete Project
@@ -220,7 +252,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           })}
         </div>
 
-        <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
+        <button className="btn btn-emerald" onClick={() => { setEditingExpense(null); setIsAddExpenseOpen(true); }}>
           <Plus size={18} /> Inko lekka
         </button>
       </div>
@@ -235,7 +267,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
               </div>
               <h3 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>Manam Reach</h3>
               <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Andari vaata lu ikada raskovochu.</p>
-              <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
+              <button className="btn btn-emerald" onClick={() => { setEditingExpense(null); setIsAddExpenseOpen(true); }}>
                 <Plus size={18} /> Ikada Rayu lekkalu anni
               </button>
             </div>
@@ -263,7 +295,7 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'white', fontFamily: 'var(--font-heading)' }}>
                           {project.currency} {exp.amount.toLocaleString()}
@@ -273,13 +305,22 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleDeleteExpense(exp.id)}
-                        style={{ background: 'transparent', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
-                        title="Delete expense"
-                      >
-                        <Trash2 size={18} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <button
+                          onClick={() => handleOpenEditExpense(exp)}
+                          style={{ background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#a5b4fc', cursor: 'pointer', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+                          title="Edit expense"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteExpense(exp.id)}
+                          style={{ background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.3)', color: '#fda4af', cursor: 'pointer', padding: '8px', borderRadius: '8px', display: 'flex', alignItems: 'center' }}
+                          title="Delete expense"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -460,12 +501,13 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
         </div>
       )}
 
-      {/* Add Expense Modal Component */}
+      {/* Add / Edit Expense Modal Component */}
       <AddExpenseModal
         isOpen={isAddExpenseOpen}
         project={project}
-        onClose={() => setIsAddExpenseOpen(false)}
-        onAddExpense={handleAddExpense}
+        editingExpense={editingExpense}
+        onClose={() => { setIsAddExpenseOpen(false); setEditingExpense(null); }}
+        onAddExpense={handleAddOrUpdateExpense}
       />
     </div>
   );

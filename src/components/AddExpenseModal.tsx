@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SpendProject, SplitType, Expense, SplitShare } from '../types';
 import { CATEGORY_ICONS } from '../utils';
-import { Plus, X, Users, Percent, Calculator, UserCheck } from 'lucide-react';
+import { Plus, X, Users, Percent, Calculator, UserCheck, Edit2 } from 'lucide-react';
 
 interface AddExpenseModalProps {
   isOpen: boolean;
   project: SpendProject;
+  editingExpense?: Expense | null;
   onClose: () => void;
   onAddExpense: (expense: Expense) => void;
 }
@@ -13,6 +14,7 @@ interface AddExpenseModalProps {
 export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   isOpen,
   project,
+  editingExpense,
   onClose,
   onAddExpense
 }) => {
@@ -33,6 +35,47 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [customPortions, setCustomPortions] = useState<Record<string, number>>({});
   const [customExacts, setCustomExacts] = useState<Record<string, number>>({});
   const [customPercentages, setCustomPercentages] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      if (editingExpense) {
+        setTitle(editingExpense.title);
+        setAmount(editingExpense.amount.toString());
+        setCategory(editingExpense.category || 'Food');
+        setPaidBy(editingExpense.paidBy || project.members[0]?.id || '');
+        setSplitType(editingExpense.splitType || 'equal');
+        setNotes(editingExpense.notes || '');
+        setDate(editingExpense.date ? new Date(editingExpense.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+        setSelectedMemberIds(editingExpense.splits.map(s => s.personId));
+
+        const portions: Record<string, number> = {};
+        const exacts: Record<string, number> = {};
+        const pcts: Record<string, number> = {};
+
+        editingExpense.splits.forEach(s => {
+          if (s.portion !== undefined) portions[s.personId] = s.portion;
+          if (s.amount !== undefined) exacts[s.personId] = s.amount;
+          if (s.percentage !== undefined) pcts[s.personId] = s.percentage;
+        });
+
+        setCustomPortions(portions);
+        setCustomExacts(exacts);
+        setCustomPercentages(pcts);
+      } else {
+        setTitle('');
+        setAmount('');
+        setCategory('Food');
+        setPaidBy(project.members[0]?.id || '');
+        setSplitType('equal');
+        setNotes('');
+        setDate(new Date().toISOString().split('T')[0]);
+        setSelectedMemberIds(project.members.map(m => m.id));
+        setCustomPortions({});
+        setCustomExacts({});
+        setCustomPercentages({});
+      }
+    }
+  }, [isOpen, editingExpense, project]);
 
   if (!isOpen) return null;
 
@@ -120,8 +163,8 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
 
     const splits = calculateFinalSplits();
 
-    const newExpense: Expense = {
-      id: `exp-${Date.now()}`,
+    const expenseObj: Expense = {
+      id: editingExpense ? editingExpense.id : `exp-${Date.now()}`,
       title: title.trim(),
       amount: totalAmountNum,
       date: date ? new Date(date).toISOString() : new Date().toISOString(),
@@ -132,7 +175,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       notes: notes.trim()
     };
 
-    onAddExpense(newExpense);
+    onAddExpense(expenseObj);
     onClose();
   };
 
@@ -141,7 +184,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       <div className="modal-content" style={{ maxWidth: '650px' }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div>
-            <h3 className="modal-title">Add Expenditure</h3>
+            <h3 className="modal-title">{editingExpense ? 'Edit Expenditure' : 'Add Expenditure'}</h3>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Project: {project.title}</p>
           </div>
           <button className="modal-close" onClick={onClose}><X size={20} /></button>
