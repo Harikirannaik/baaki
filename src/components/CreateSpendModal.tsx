@@ -12,9 +12,9 @@ interface CreateSpendModalProps {
   currentUserName?: string;
 }
 
-export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({ 
-  isOpen, 
-  onClose, 
+export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
+  isOpen,
+  onClose,
   onCreate,
   currentUserEmail,
   currentUserName,
@@ -128,22 +128,22 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
 
         <form onSubmit={handleSubmit} className="modal-body">
           <div className="form-group">
-            <label className="form-label">Spending Project Title *</label>
-            <input 
-              type="text" 
-              className="form-control" 
+            <label className="form-label"> Khaata Title *</label>
+            <input
+              type="text"
+              className="form-control"
               placeholder="e.g. Thailand Vacation 2026, House Rent, Birthday Bash"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              required 
+              required
             />
           </div>
 
           <div className="form-group">
             <label className="form-label">Description (Optional)</label>
-            <input 
-              type="text" 
-              className="form-control" 
+            <input
+              type="text"
+              className="form-control"
               placeholder="Short note about what this spending project is for..."
               value={description}
               onChange={e => setDescription(e.target.value)}
@@ -153,8 +153,8 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group">
               <label className="form-label">Category</label>
-              <select 
-                className="form-control" 
+              <select
+                className="form-control"
                 value={category}
                 onChange={e => setCategory(e.target.value as any)}
               >
@@ -168,10 +168,10 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
 
             <div className="form-group">
               <label className="form-label">Currency Symbol</label>
-              <input 
-                type="text" 
-                className="form-control" 
-                value={currency} 
+              <input
+                type="text"
+                className="form-control"
+                value={currency}
                 onChange={e => setCurrency(e.target.value)}
                 placeholder="₹, $, €, £"
                 maxLength={4}
@@ -183,7 +183,7 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
             <label className="form-label">Card Theme Gradient</label>
             <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
               {PROJECT_GRADIENTS.map((grad, idx) => (
-                <div 
+                <div
                   key={idx}
                   onClick={() => setSelectedGradient(grad)}
                   style={{
@@ -206,7 +206,7 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
               <span>Select Registered Users (DB)</span>
               <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>{existingUsersList.length} users registered</span>
             </label>
-            
+
             {existingUsersList.length > 0 && (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', maxHeight: '120px', overflowY: 'auto', padding: '6px', background: 'rgba(15, 23, 42, 0.4)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
                 {existingUsersList.map((user: any) => {
@@ -245,7 +245,7 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
 
             <label className="form-label">Or Add Custom Member</label>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-              <input 
+              <input
                 type="text"
                 className="form-control"
                 placeholder="Enter custom member name..."
@@ -253,8 +253,8 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
                 onChange={e => setNewMemberName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomMember(); } }}
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className="btn btn-secondary"
                 onClick={handleAddCustomMember}
               >
@@ -265,7 +265,7 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
             <label className="form-label">Selected Project Members ({selectedMembers.length})</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
               {selectedMembers.map((m) => (
-                <div 
+                <div
                   key={m.id}
                   style={{
                     background: 'rgba(99, 102, 241, 0.15)',
@@ -286,8 +286,8 @@ export const CreateSpendModal: React.FC<CreateSpendModalProps> = ({
                   />
                   <span>{m.name}</span>
                   {selectedMembers.length > 1 && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => handleRemoveMember(m.id)}
                       style={{ background: 'none', border: 'none', color: '#fda4af', cursor: 'pointer', display: 'flex' }}
                     >
