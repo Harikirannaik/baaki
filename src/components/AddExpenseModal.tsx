@@ -22,6 +22,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
   const [paidBy, setPaidBy] = useState<string>(project.members[0]?.id || '');
   const [splitType, setSplitType] = useState<SplitType>('equal');
   const [notes, setNotes] = useState('');
+  const [date, setDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
   // Selected members for split (defaults to all members)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(
@@ -123,7 +124,7 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
       id: `exp-${Date.now()}`,
       title: title.trim(),
       amount: totalAmountNum,
-      date: new Date().toISOString(),
+      date: date ? new Date(date).toISOString() : new Date().toISOString(),
       category,
       paidBy: paidBy || project.members[0].id,
       splitType,
@@ -174,7 +175,18 @@ export const AddExpenseModal: React.FC<AddExpenseModalProps> = ({
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div className="form-group">
+              <label className="form-label">Date of Expenditure *</label>
+              <input
+                type="date"
+                className="form-control"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                required
+              />
+            </div>
+
             <div className="form-group">
               <label className="form-label">Category</label>
               <select className="form-control" value={category} onChange={e => setCategory(e.target.value)}>
