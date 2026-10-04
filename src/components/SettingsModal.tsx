@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from './AuthModal';
-import { User, Settings, LogOut, Shield, Bell, Moon, X, Check } from 'lucide-react';
+import { Settings, LogOut, Bell, X, Check } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;

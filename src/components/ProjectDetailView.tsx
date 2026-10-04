@@ -4,7 +4,7 @@ import { calculateBalances, simplifyDebts, CATEGORY_ICONS } from '../utils';
 import { AddExpenseModal } from './AddExpenseModal';
 import { 
   ArrowLeft, Plus, Users, Receipt, Scale, UserPlus, 
-  CheckCircle2, Trash2, Calendar, Wallet, AlertCircle, Sparkles
+  CheckCircle2, Trash2, Wallet, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -25,11 +25,6 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
   const [isAddExpenseOpen, setIsAddExpenseOpen] = useState(false);
   const [newMemberName, setNewMemberName] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
-
-  // Settlement modal state
-  const [settlementFrom, setSettlementFrom] = useState('');
-  const [settlementTo, setSettlementTo] = useState('');
-  const [settlementAmount, setSettlementAmount] = useState('');
 
   const balances = calculateBalances(project);
   const simplifiedDebts = simplifyDebts(balances);

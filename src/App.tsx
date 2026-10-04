@@ -5,13 +5,12 @@ import { ProjectDetailView } from './components/ProjectDetailView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { SettingsModal } from './components/SettingsModal';
 import { subscribeProjects, saveProjectToFirestore, deleteProjectFromFirestore } from './firebase';
-import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, User, Settings, LogIn, UserPlus, Sun, Moon } from 'lucide-react';
+import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, Settings, LogIn, UserPlus, Sun, Moon } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [projects, setProjects] = useState<SpendProject[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   // Theme state ('dark' | 'light')
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -44,7 +43,6 @@ export const App: React.FC = () => {
     // Subscribe to Firestore projects collection
     const unsubscribe = subscribeProjects((fetchedProjects) => {
       setProjects(fetchedProjects);
-      setIsLoaded(true);
     });
 
     return () => unsubscribe();
