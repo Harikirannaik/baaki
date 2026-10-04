@@ -56,6 +56,7 @@ export const App: React.FC = () => {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setActiveProjectId(null);
     localStorage.removeItem('baaki_current_user');
     setIsSettingsModalOpen(false);
   };
