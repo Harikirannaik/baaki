@@ -220,9 +220,9 @@ export const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({
           })}
         </div>
 
-        {/* <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
-          <Plus size={18} /> Add Expenditure
-        </button> */}
+        <button className="btn btn-emerald" onClick={() => setIsAddExpenseOpen(true)}>
+          <Plus size={18} /> Inko lekka
+        </button>
       </div>
 
       {/* TAB 1: EXPENDITURES LIST */}

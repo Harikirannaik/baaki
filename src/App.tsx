@@ -5,8 +5,9 @@ import { ProjectDetailView } from './components/ProjectDetailView';
 import { AuthModal, UserProfile } from './components/AuthModal';
 import { SettingsModal } from './components/SettingsModal';
 import { LandingPage } from './components/LandingPage';
-import { subscribeProjects, saveProjectToFirestore, deleteProjectFromFirestore } from './firebase';
-import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, Settings, LogIn, UserPlus, Sun, Moon } from 'lucide-react';
+import { subscribeProjects, saveProjectToFirestore, deleteProjectFromFirestore, subscribeUsersFromFirestore } from './firebase';
+import { calculateBalances, simplifyDebts } from './utils';
+import { Plus, Wallet, Sparkles, TrendingUp, ArrowRight, ShieldCheck, PieChart, Trash2, FolderPlus, Settings, LogIn, UserPlus, Sun, Moon, CheckCircle2, History } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [projects, setProjects] = useState<SpendProject[]>([]);
@@ -42,12 +43,32 @@ export const App: React.FC = () => {
     localStorage.removeItem('baaki_projects');
 
     // Subscribe to Firestore projects collection
-    const unsubscribe = subscribeProjects((fetchedProjects) => {
+    const unsubscribeProjects = subscribeProjects((fetchedProjects) => {
       setProjects(fetchedProjects);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeProjects();
   }, []);
+
+  // Monitor Firestore users: Auto-logout if logged-in user is not in DB or deleted
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubscribeUsers = subscribeUsersFromFirestore((usersMap) => {
+      const normalizedEmail = currentUser.email.toLowerCase().trim();
+      const userExistsInDb = !!usersMap[normalizedEmail];
+
+      if (!userExistsInDb) {
+        console.warn(`User ${normalizedEmail} is not present in DB. Logging out.`);
+        setCurrentUser(null);
+        setActiveProjectId(null);
+        localStorage.removeItem('baaki_current_user');
+        setIsSettingsModalOpen(false);
+      }
+    });
+
+    return () => unsubscribeUsers();
+  }, [currentUser]);
 
   const handleAuthSuccess = (user: UserProfile) => {
     setCurrentUser(user);
@@ -79,6 +100,17 @@ export const App: React.FC = () => {
     if (!p.ownerId) return true;
     return false;
   });
+
+  // Helper to check if a project is fully settled
+  const isProjectSettled = (proj: SpendProject) => {
+    if (!proj.expenses || proj.expenses.length === 0) return false;
+    const balances = calculateBalances(proj);
+    const debts = simplifyDebts(balances);
+    return debts.length === 0;
+  };
+
+  const activeProjectsList = userProjects.filter(p => !isProjectSettled(p));
+  const settledProjectsList = userProjects.filter(p => isProjectSettled(p));
 
   const activeProject = userProjects.find(p => p.id === activeProjectId);
 
@@ -148,7 +180,7 @@ export const App: React.FC = () => {
               >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'inline-block' }}>
-                  {theme === 'dark' ? 'Light' : 'Dark'}
+                  {theme === 'dark' ? 'Velturu' : 'Chikati'}
                 </span>
               </button>
 
@@ -369,8 +401,9 @@ export const App: React.FC = () => {
 
             {/* Projects Grid Section */}
             <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700 }}>
-                Your Baaki Khata
+              <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <FolderPlus size={22} color="var(--primary)" />
+                Your Baaki Khata ({activeProjectsList.length})
               </h2>
               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 Select a project to add or view expenditures
@@ -382,100 +415,206 @@ export const App: React.FC = () => {
                 <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--primary-light)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: '16px' }}>
                   <FolderPlus size={32} />
                 </div>
-                <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '8px', color: 'white' }}>No Projects Created Yet</h3>
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: '8px', color: 'white' }}>Em Lev</h3>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.98rem' }}>
-                  Create your first project to start tracking expenses tagged to your account!
+                  Emanna unte Rayi!
                 </p>
                 <button className="btn btn-primary" style={{ padding: '12px 24px' }} onClick={() => setIsCreateModalOpen(true)}>
                   <Plus size={18} /> Create Your First Project
                 </button>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
-                {userProjects.map(proj => {
-                  const projectTotal = proj.expenses.reduce((sum, e) => sum + e.amount, 0);
+              <>
+                {/* ACTIVE PROJECTS */}
+                {activeProjectsList.length === 0 ? (
+                  <div className="card-glass" style={{ padding: '32px 24px', textAlign: 'center', marginBottom: '40px' }}>
+                    <CheckCircle2 size={36} color="var(--accent-emerald)" style={{ marginBottom: '8px' }} />
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>No Active Unsettled Khaata</h4>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '4px' }}>All your existing projects are fully settled up! Check "Previous Khaata" below.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px', marginBottom: '48px' }}>
+                    {activeProjectsList.map(proj => {
+                      const projectTotal = proj.expenses.reduce((sum, e) => sum + e.amount, 0);
 
-                  return (
-                    <div
-                      key={proj.id}
-                      className="card-glass"
-                      onClick={() => setActiveProjectId(proj.id)}
-                      style={{
-                        cursor: 'pointer',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between'
-                      }}
-                    >
-                      {/* Top Gradient Banner */}
-                      <div style={{ height: '110px', background: proj.coverGradient, padding: '20px', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <span style={{ background: 'rgba(0,0,0,0.4)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, color: 'white', textTransform: 'uppercase', backdropFilter: 'blur(4px)' }}>
-                          {proj.category}
-                        </span>
-                        <button
-                          onClick={(e) => handleDeleteProject(proj.id, e)}
+                      return (
+                        <div
+                          key={proj.id}
+                          className="card-glass"
+                          onClick={() => setActiveProjectId(proj.id)}
                           style={{
-                            background: 'rgba(0,0,0,0.4)',
-                            border: 'none',
-                            color: 'white',
-                            borderRadius: '8px',
-                            padding: '6px',
                             cursor: 'pointer',
-                            backdropFilter: 'blur(4px)'
+                            overflow: 'hidden',
+                            position: 'relative',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between'
                           }}
-                          title="Delete project"
                         >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-
-                      {/* Card Content Body */}
-                      <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                        <div>
-                          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '6px', color: 'white' }}>
-                            {proj.title}
-                          </h3>
-                          {proj.description && (
-                            <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                              {proj.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', textTransform: 'uppercase', fontWeight: 600 }}>Total Spent</div>
-                            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', fontFamily: 'var(--font-heading)' }}>
-                              {proj.currency} {projectTotal.toLocaleString()}
-                            </div>
+                          {/* Top Gradient Banner */}
+                          <div style={{ height: '110px', background: proj.coverGradient, padding: '20px', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <span style={{ background: 'rgba(0,0,0,0.4)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, color: 'white', textTransform: 'uppercase', backdropFilter: 'blur(4px)' }}>
+                              {proj.category}
+                            </span>
+                            <button
+                              onClick={(e) => handleDeleteProject(proj.id, e)}
+                              style={{
+                                background: 'rgba(0,0,0,0.4)',
+                                border: 'none',
+                                color: 'white',
+                                borderRadius: '8px',
+                                padding: '6px',
+                                cursor: 'pointer',
+                                backdropFilter: 'blur(4px)'
+                              }}
+                              title="Delete project"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', marginLeft: '-6px' }}>
-                              {proj.members.slice(0, 3).map((m, idx) => (
-                                <img
-                                  key={m.id}
-                                  src={m.avatar}
-                                  alt={m.name}
-                                  style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b', marginLeft: idx > 0 ? '-8px' : 0 }}
-                                />
-                              ))}
-                              {proj.members.length > 3 && (
-                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '2px solid #1e293b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '-8px' }}>
-                                  +{proj.members.length - 3}
-                                </div>
+                          {/* Card Content Body */}
+                          <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                            <div>
+                              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '6px', color: 'white' }}>
+                                {proj.title}
+                              </h3>
+                              {proj.description && (
+                                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '16px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                  {proj.description}
+                                </p>
                               )}
                             </div>
-                            <ArrowRight size={18} color="var(--primary)" />
+
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-subtle)', textTransform: 'uppercase', fontWeight: 600 }}>Total Spent</div>
+                                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'white', fontFamily: 'var(--font-heading)' }}>
+                                  {proj.currency} {projectTotal.toLocaleString()}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', marginLeft: '-6px' }}>
+                                  {proj.members.slice(0, 3).map((m, idx) => (
+                                    <img
+                                      key={m.id}
+                                      src={m.avatar}
+                                      alt={m.name}
+                                      style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid #1e293b', marginLeft: idx > 0 ? '-8px' : 0 }}
+                                    />
+                                  ))}
+                                  {proj.members.length > 3 && (
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '2px solid #1e293b', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '-8px' }}>
+                                      +{proj.members.length - 3}
+                                    </div>
+                                  )}
+                                </div>
+                                <ArrowRight size={18} color="var(--primary)" />
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* PREVIOUS SETTLED KHAATA SECTION */}
+                {settledProjectsList.length > 0 && (
+                  <div>
+                    <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <History size={22} color="var(--accent-emerald)" />
+                      <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.35rem', fontWeight: 700, color: 'white' }}>
+                        Previous Khaata (Settled) ({settledProjectsList.length})
+                      </h3>
                     </div>
-                  );
-                })}
-              </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
+                      {settledProjectsList.map(proj => {
+                        const projectTotal = proj.expenses.reduce((sum, e) => sum + e.amount, 0);
+
+                        return (
+                          <div
+                            key={proj.id}
+                            className="card-glass"
+                            onClick={() => setActiveProjectId(proj.id)}
+                            style={{
+                              cursor: 'pointer',
+                              overflow: 'hidden',
+                              position: 'relative',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              opacity: 0.82,
+                              border: '1px solid rgba(16, 185, 129, 0.3)'
+                            }}
+                          >
+                            {/* Top Gradient Banner */}
+                            <div style={{ height: '95px', background: proj.coverGradient, padding: '16px 20px', position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <span style={{ background: 'rgba(16, 185, 129, 0.85)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, color: 'white', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <CheckCircle2 size={12} /> Settled
+                              </span>
+                              <button
+                                onClick={(e) => handleDeleteProject(proj.id, e)}
+                                style={{
+                                  background: 'rgba(0,0,0,0.4)',
+                                  border: 'none',
+                                  color: 'white',
+                                  borderRadius: '8px',
+                                  padding: '6px',
+                                  cursor: 'pointer',
+                                  backdropFilter: 'blur(4px)'
+                                }}
+                                title="Delete project"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+
+                            {/* Card Content Body */}
+                            <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                              <div>
+                                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px', color: 'white' }}>
+                                  {proj.title}
+                                </h3>
+                                {proj.description && (
+                                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '14px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                    {proj.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--accent-emerald)', textTransform: 'uppercase', fontWeight: 700 }}>Fully Settled</div>
+                                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'white', fontFamily: 'var(--font-heading)' }}>
+                                    {proj.currency} {projectTotal.toLocaleString()}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div style={{ display: 'flex', marginLeft: '-6px' }}>
+                                    {proj.members.slice(0, 3).map((m, idx) => (
+                                      <img
+                                        key={m.id}
+                                        src={m.avatar}
+                                        alt={m.name}
+                                        style={{ width: '26px', height: '26px', borderRadius: '50%', border: '2px solid #1e293b', marginLeft: idx > 0 ? '-6px' : 0 }}
+                                      />
+                                    ))}
+                                  </div>
+                                  <ArrowRight size={16} color="var(--primary)" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
