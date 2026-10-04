@@ -29,6 +29,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [firestoreUsers, setFirestoreUsers] = useState<Record<string, any>>({});
 
   useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setError('');
+    }
+  }, [initialMode, isOpen]);
+
+  useEffect(() => {
     const unsubscribe = subscribeUsersFromFirestore((fetchedUsers) => {
       setFirestoreUsers(fetchedUsers);
     });
