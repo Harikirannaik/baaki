@@ -68,12 +68,16 @@ export const deleteProjectFromFirestore = async (projectId: string) => {
 /**
  * Save user profile & credentials to Firestore users collection
  */
-export const saveUserToFirestore = async (userData: { name: string; email: string; avatar: string; passwordHash: string }) => {
+export const saveUserToFirestore = async (userData: { name: string; email: string; avatar?: string; passwordHash?: string; [key: string]: any }) => {
   try {
-    await setDoc(doc(db, 'users', userData.email.toLowerCase().trim()), {
-      ...userData,
-      createdAt: new Date().toISOString()
-    });
+    await setDoc(
+      doc(db, 'users', userData.email.toLowerCase().trim()),
+      {
+        ...userData,
+        updatedAt: new Date().toISOString()
+      },
+      { merge: true }
+    );
   } catch (err) {
     console.error("Error saving user to Firestore:", err);
   }
