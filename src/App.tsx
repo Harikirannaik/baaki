@@ -142,6 +142,64 @@ export const App: React.FC = () => {
 
   const totalGlobalExpensesCount = userProjects.reduce((acc, p) => acc + p.expenses.length, 0);
 
+  // Compute combined net balance with every other user across all user's projects
+  const globalUserBalances = React.useMemo(() => {
+    if (!currentUser) return { owesMap: {} as Record<string, { name: string; avatar?: string; amount: number }>, getsMap: {} as Record<string, { name: string; avatar?: string; amount: number }>, netTotal: 0 };
+
+    const currentUserEmail = currentUser.email.toLowerCase().trim();
+    const netPerUser: Record<string, { name: string; avatar?: string; email?: string; balance: number }> = {};
+
+    userProjects.forEach(proj => {
+      // Find current user's member ID in this project
+      const myMember = proj.members.find(m => (m.email && m.email.toLowerCase().trim() === currentUserEmail) || m.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim());
+      if (!myMember) return;
+
+      const myId = myMember.id;
+      const balances = calculateBalances(proj);
+      const simplified = simplifyDebts(balances);
+
+      simplified.forEach(debt => {
+        if (debt.from === myId) {
+          // Current user owes debt.to
+          const otherMember = proj.members.find(m => m.id === debt.to);
+          if (otherMember) {
+            const key = otherMember.email?.toLowerCase().trim() || otherMember.name.toLowerCase().trim();
+            if (!netPerUser[key]) {
+              netPerUser[key] = { name: otherMember.name, avatar: otherMember.avatar, email: otherMember.email, balance: 0 };
+            }
+            netPerUser[key].balance -= debt.amount;
+          }
+        } else if (debt.to === myId) {
+          // debt.from owes current user
+          const otherMember = proj.members.find(m => m.id === debt.from);
+          if (otherMember) {
+            const key = otherMember.email?.toLowerCase().trim() || otherMember.name.toLowerCase().trim();
+            if (!netPerUser[key]) {
+              netPerUser[key] = { name: otherMember.name, avatar: otherMember.avatar, email: otherMember.email, balance: 0 };
+            }
+            netPerUser[key].balance += debt.amount;
+          }
+        }
+      });
+    });
+
+    const owesMap: Record<string, { name: string; avatar?: string; amount: number }> = {};
+    const getsMap: Record<string, { name: string; avatar?: string; amount: number }> = {};
+    let netTotal = 0;
+
+    Object.values(netPerUser).forEach(u => {
+      const rounded = Math.round(u.balance * 100) / 100;
+      netTotal += rounded;
+      if (rounded < -0.01) {
+        owesMap[u.name] = { name: u.name, avatar: u.avatar, amount: Math.abs(rounded) };
+      } else if (rounded > 0.01) {
+        getsMap[u.name] = { name: u.name, avatar: u.avatar, amount: rounded };
+      }
+    });
+
+    return { owesMap, getsMap, netTotal: Math.round(netTotal * 100) / 100 };
+  }, [userProjects, currentUser]);
+
   // If user is not logged in, render the futuristic Landing Page first
   if (!currentUser) {
     return (
@@ -343,21 +401,86 @@ export const App: React.FC = () => {
           /* HOME PAGE DASHBOARD */
           <div>
             {/* Hero Section */}
-            <div style={{ textAlign: 'center', padding: '40px 20px 48px', maxWidth: '750px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', padding: '36px 20px 32px', maxWidth: '850px', margin: '0 auto' }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--primary-light)', padding: '6px 16px', borderRadius: '30px', color: '#818cf8', fontWeight: 600, fontSize: '0.88rem', marginBottom: '16px', border: '1px solid rgba(99,102,241,0.3)' }}>
                 <Sparkles size={16} /> Equal & Custom Bill Splitting Made Effortless
               </div>
-              <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.15, marginBottom: '16px', background: 'linear-gradient(135deg, #ffffff 40%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              {/* <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '2.8rem', fontWeight: 800, lineHeight: 1.15, marginBottom: '16px', background: 'linear-gradient(135deg, #ffffff 40%, #94a3b8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                 Split Group Expenses Without The Awkwardness
               </h1>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '28px', lineHeight: 1.6 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '24px', lineHeight: 1.6 }}>
                 Create spending projects for trips, apartment rent, parties & couples. Split equally, by portions, percentages, or exact amounts.
-              </p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              </p> */}
+
+              {/* Combined Multi-Project Net Balance Summary */}
+              <div style={{ background: 'rgba(15, 23, 42, 0.7)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-lg)', padding: '24px', marginTop: '20px', marginBottom: '28px', backdropFilter: 'blur(10px)', textAlign: 'left' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border-light)', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Wallet size={22} color="var(--primary)" />
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'white' }}>Overall Net Balance Summary</h3>
+                  </div>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Across all {userProjects.length} projects</span>
+                </div>
+
+                {Object.keys(globalUserBalances.owesMap).length === 0 && Object.keys(globalUserBalances.getsMap).length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '16px', color: 'var(--accent-emerald)', fontWeight: 600, fontSize: '0.95rem' }}>
+                    <CheckCircle2 size={24} style={{ display: 'block', margin: '0 auto 6px' }} />
+                    You are completely settled up with everyone across all projects!
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                    {/* People You Owe */}
+                    <div style={{ background: 'rgba(244, 63, 94, 0.08)', border: '1px solid rgba(244, 63, 94, 0.25)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fca5a5', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>🔻 You Owe</span>
+                      </div>
+                      {Object.keys(globalUserBalances.owesMap).length === 0 ? (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>You don't owe anyone 👌</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {Object.values(globalUserBalances.owesMap).map(u => (
+                            <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.92rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`} alt={u.name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                                <span style={{ fontWeight: 600, color: 'white' }}>{u.name}</span>
+                              </div>
+                              <span style={{ fontWeight: 800, color: '#f43f5e' }}>₹ {u.amount.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* People Who Owe You */}
+                    <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#6ee7b7', textTransform: 'uppercase', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>🔺 You Get Back</span>
+                      </div>
+                      {Object.keys(globalUserBalances.getsMap).length === 0 ? (
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No one owes you right now</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {Object.values(globalUserBalances.getsMap).map(u => (
+                            <div key={u.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.92rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.name)}`} alt={u.name} style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                                <span style={{ fontWeight: 600, color: 'white' }}>{u.name}</span>
+                              </div>
+                              <span style={{ fontWeight: 800, color: '#10b981' }}>₹ {u.amount.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
                 <button className="btn btn-primary" style={{ padding: '14px 28px', fontSize: '1rem' }} onClick={() => setIsCreateModalOpen(true)}>
                   <Plus size={20} /> Create New Baaki
                 </button>
-              </div>
+              </div> */}
             </div>
 
             {/* Quick Metrics Bar */}
